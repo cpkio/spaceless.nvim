@@ -1,33 +1,43 @@
 local api = vim.api
+local utf8 = require'lua-utf8'
 
-local spaceless_event = {}
+local event = {}
+
+local function atTipOfUndo()
+  local tree = vim.fn.undotree()
+  return tree.seq_last == tree.seq_cur
+end
 
 local function stripWhitespace(buffer, top, bottom)
 
-  local sourced_text = api.nvim_buf_get_lines(0, top, bottom, false)
+  if (atTipOfUndo()) then return end
+
+  local sourced_text = api.nvim_buf_get_lines(buffer, top, bottom, false)
   local replaced_text = {}
   for index, line in ipairs(sourced_text) do
-    local l, _ = string.gsub(line, '%s+$', '')
-    table.insert(replaced_text, index, l)
+    local l, _ = string.gsub(line, '%s%s+$', '')
+    table.insert(replaced_text, l)
   end
-  api.nvim_buf_set_lines(0, top, bottom, false, replaced_text)
+  api.nvim_buf_set_lines(buffer, top, bottom, false, replaced_text)
 
 end
 
 local function onBufLeave()
-  api.nvim_buf_detach(0)
 end
 
 local function onBufEnter()
-  api.nvim_buf_attach(0, false, {
+  api.nvim_buf_attach(api.nvim_get_current_buf(), false, {
     on_lines = function(...)
-      spaceless_event = { ... }
+      event = { ... }
+    end,
+    on_detach = function()
+      print("Detached")
     end
   })
 end
 
 local function onBufModify()
-  stripWhitespace(0, spaceless_event[4], spaceless_event[5])
+  stripWhitespace(event[2], event[4], event[6])
 end
 
 local M = {}
@@ -50,7 +60,7 @@ function M.setup()
   au('BufEnter', onBufEnter)
   au('BufLeave', onBufLeave)
   au('TextChanged', onBufModify)
-  au('InsertLeave', onBufModify)
+  au('TextChangedI', onBufModify)
 end
 
 return M
