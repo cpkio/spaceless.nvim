@@ -1,25 +1,23 @@
 local api = vim.api
-local utf8 = require'lua-utf8'
+-- local utf8 = require'lua-utf8'
 
-local event = {}
+local from = 0
+local till = 0
 
-local function atTipOfUndo()
-  local tree = vim.fn.undotree()
-  return tree.seq_last == tree.seq_cur
-end
+-- local function atTipOfUndo()
+--   local tree = vim.fn.undotree()
+--   return tree.seq_last == tree.seq_cur
+-- end
 
 local function stripWhitespace(buffer, top, bottom)
-
-  if (atTipOfUndo()) then return end
-
-  local sourced_text = api.nvim_buf_get_lines(buffer, top, bottom, false)
+  local sourced_text = api.nvim_buf_get_lines(buffer, top, bottom, true)
   local replaced_text = {}
-  for index, line in ipairs(sourced_text) do
-    local l, _ = string.gsub(line, '%s%s+$', '')
+  for _, line in ipairs(sourced_text) do
+    local l, _ = string.gsub(line, '%s+$', '')
+    -- local l = vim.fn.trim( line, " \t", 2 )
     table.insert(replaced_text, l)
   end
-  api.nvim_buf_set_lines(buffer, top, bottom, false, replaced_text)
-
+  api.nvim_buf_set_lines(buffer, top, bottom, true, replaced_text)
 end
 
 local function onBufLeave()
@@ -28,22 +26,30 @@ end
 local function onBufEnter()
   api.nvim_buf_attach(api.nvim_get_current_buf(), false, {
     on_lines = function(...)
-      event = { ... }
+      local event = { ... }
+      from = math.min(from, event[4])
+      till = math.max(till, event[5])
     end,
     on_detach = function()
-      print("Detached")
+      vim.notify_once("Detached")
     end
   })
 end
 
-local function onBufModify()
-  stripWhitespace(event[2], event[4], event[6])
+local function onInsEnter()
+  local current = api.nvim_win_get_cursor(0)[1]
+  from = current - 1
+  till = current
+end
+
+local function onInsLeave()
+  stripWhitespace(0, from, till)
 end
 
 local M = {}
 
 function M.setup()
-  local group = api.nvim_create_augroup('spaceless', {})
+  local group = api.nvim_create_augroup('spaceless', { clear = true })
 
   local pattern = {
     "*.adoc",
@@ -51,16 +57,11 @@ function M.setup()
     "*.vimwiki"
   }
 
-  local function au(event, callback)
-    api.nvim_create_autocmd(event, { pattern = pattern, group = group, callback = callback })
-  end
+  api.nvim_create_autocmd('BufEnter', { once = true, pattern = pattern, group = group, callback = onBufEnter })
+  api.nvim_create_autocmd('BufLeave', { once = true, pattern = pattern, group = group, callback = onBufLeave })
+  api.nvim_create_autocmd('InsertEnter', { pattern = pattern, group = group, callback = onInsEnter })
+  api.nvim_create_autocmd('InsertLeavePre', { pattern = pattern, group = group, callback = onInsLeave })
 
-  -- The user may move between buffers in insert mode
-  -- (for example, with the mouse), so handle this appropriately.
-  au('BufEnter', onBufEnter)
-  au('BufLeave', onBufLeave)
-  au('TextChanged', onBufModify)
-  au('TextChangedI', onBufModify)
 end
 
 return M
