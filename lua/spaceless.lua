@@ -4,13 +4,7 @@ local from = 0
 local till = 0
 
 local function stripWhitespace(buffer, top, bottom)
-  local sourced_text = api.nvim_buf_get_lines(buffer, top, bottom, false)
-  local replaced_text = {}
-  for _, line in ipairs(sourced_text) do
-    local l, _ = string.gsub(line, '%s+$', '')
-    table.insert(replaced_text, l)
-  end
-  api.nvim_buf_set_lines(buffer, top, bottom, false, replaced_text)
+  vim.cmd(top..','..bottom..[[s/\s*$//]])
 end
 
 local function onBufLeave()
@@ -20,7 +14,7 @@ local function onBufEnter()
   api.nvim_buf_attach(api.nvim_get_current_buf(), false, {
     on_lines = function(...)
       local event = { ... }
-      from = math.min(from, event[4])
+      from = math.min(from, event[5])
       till = math.max(till, event[5])
     end,
     on_detach = function()
@@ -31,7 +25,7 @@ end
 
 local function onInsEnter()
   local current = api.nvim_win_get_cursor(0)[1]
-  from = current - 1
+  from = current
   till = current
 end
 
@@ -45,6 +39,7 @@ function M.setup()
   local group = api.nvim_create_augroup('spaceless', { clear = true })
 
   local pattern = {
+    "*.txt",
     "*.adoc",
     "*.md",
     "*.vimwiki"
