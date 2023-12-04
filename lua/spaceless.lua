@@ -17,9 +17,7 @@ local function onBufEnter()
       from = math.min(from, event[5])
       till = math.max(till, event[5])
     end,
-    on_detach = function()
-      vim.notify_once("Detached")
-    end
+    -- on_detach = function() end // if vim.notify here, this generated an error on bdelete
   })
 end
 
@@ -30,15 +28,17 @@ local function onInsEnter()
 end
 
 local function onInsLeave()
+  local pos = api.nvim_win_get_cursor(0)
   stripWhitespace(0, from, till)
+  api.nvim_win_set_cursor(0, pos)
 end
 
 local M = {}
 
-function M.setup()
+function M.setup(opts)
   local group = api.nvim_create_augroup('spaceless', { clear = true })
 
-  local pattern = {
+  local pattern = opts.pattern or {
     "*.txt",
     "*.adoc",
     "*.md",
