@@ -4,6 +4,7 @@ local from = 0
 local till = 0
 
 local function stripWhitespace(buffer, top, bottom)
+  local bottom = math.min(bottom, vim.fn.line('$'))
   vim.cmd(top..','..bottom..[[s/\s*$//]])
 end
 
