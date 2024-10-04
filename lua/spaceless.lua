@@ -30,6 +30,9 @@ end
 
 local function onInsLeave()
   local pos = api.nvim_win_get_cursor(0)
+  if from > till then
+    from, till = till, from
+  end
   stripWhitespace(0, from, till)
   api.nvim_win_set_cursor(0, pos)
 end
