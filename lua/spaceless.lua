@@ -5,6 +5,7 @@ local till = 0
 
 local function stripWhitespace(buffer, top, bottom)
   local bottom = math.min(bottom, vim.fn.line('$'))
+  if top > bottom then top = bottom end
   vim.cmd(top..','..bottom..[[s/\s*$//]])
 end
 
@@ -30,9 +31,9 @@ end
 
 local function onInsLeave()
   local pos = api.nvim_win_get_cursor(0)
-  if from > till then
-    from, till = till, from
-  end
+  -- if from > till then
+  --   from, till = till, from
+  -- end
   stripWhitespace(0, from, till)
   api.nvim_win_set_cursor(0, pos)
 end
